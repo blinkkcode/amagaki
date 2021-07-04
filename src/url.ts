@@ -1,14 +1,26 @@
 import * as fsPath from 'path';
+
 import {Document} from './document';
 import {Environment} from './environment';
+import {StaticFile} from './staticFile';
 
-interface UrlOptions {
+export interface UrlOptions {
   path: string;
   host?: string;
   scheme?: string;
   port?: string;
   env?: Environment;
 }
+
+export interface CommonUrlOptions {
+  context?: Urlable;
+  fingerprint?: boolean;
+  localize?: boolean;
+  relative?: boolean;
+}
+
+/** Types that can be represented as URLs. */
+export type Urlable = StaticFile | Document | string;
 
 const ABSOLUTE_URL_REGEX = new RegExp('^(//|[a-z]+:)', 'i');
 
@@ -59,9 +71,15 @@ export class Url {
    * @param base The `Document` or URL being linked from.
    * @returns The URL of `other` relative to `base`.
    */
-  static relative(other: Document | string, base: Document | string) {
-    const otherUrl = other instanceof Document ? other.url?.path : other;
-    const baseUrl = base instanceof Document ? base.url?.path : base;
+  static relative(other: Urlable, base: Urlable) {
+    const otherUrl =
+      other instanceof Document || other instanceof StaticFile
+        ? other.url?.path
+        : other;
+    const baseUrl =
+      base instanceof Document || base instanceof StaticFile
+        ? base.url?.path
+        : base;
     if (!otherUrl || !baseUrl || ABSOLUTE_URL_REGEX.test(otherUrl)) {
       return otherUrl;
     }
@@ -70,5 +88,55 @@ export class Url {
       return otherUrl.endsWith('/') ? './' : '.';
     }
     return otherUrl.endsWith('/') ? `./${result}/` : `./${result}`;
+  }
+
+  /**
+   * Returns a URL formatted in a common way, given a `Urlable` object.
+   * A `Urlable` object is an object that may have a URL associated with it,
+   * such as a `Document`, `StaticFile`, or a string (assumed to be an absolute
+   * URL). An error is thrown if a URL was requested for something that has no URL.
+   *
+   * Common URLs include a number of sane defaults, such as:
+   *
+   * - Returns relative URLs.
+   * - Includes a `?fingerprint` query parameter for static files.
+   * - Localizes documents using the context's locale.
+   *
+   * Defaults can be changed by supplying options.
+   *
+   * @param object The object to return the URL for.
+   * @returns The URL for the given object.
+   */
+  static common(object: Urlable, options?: CommonUrlOptions) {
+    if (object instanceof StaticFile) {
+      if (!object.url) {
+        throw new Error(`${object} has no URL.`);
+      }
+      const resultUrl =
+        options?.relative === false || !options?.context
+          ? object.url.path
+          : Url.relative(object.url.path, options?.context);
+      return options?.fingerprint === false
+        ? resultUrl
+        : `${resultUrl}?fingerprint=${object.fingerprint}`;
+    } else if (object instanceof Document) {
+      // Ensure the destination document matches the context's locale.
+      if (
+        options?.context instanceof Document &&
+        object.locale !== options?.context.locale &&
+        options?.localize !== false
+      ) {
+        object = object.localize(options?.context.locale);
+      }
+      if (!object.url) {
+        throw new Error(`${object} has no URL.`);
+      }
+      return options?.relative === false || !options?.context
+        ? object.url.path
+        : Url.relative(object.url.path, options?.context);
+    }
+    return options?.relative === false || !options?.context
+      ? object
+      : Url.relative(object, options?.context);
   }
 }

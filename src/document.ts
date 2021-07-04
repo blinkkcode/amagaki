@@ -253,6 +253,15 @@ export class Document {
     }
   }
 
+  /**
+   * Returns the document localized to a different locale.
+   * @param locale The locale to use when localizing the document.
+   * @returns The localized document.
+   */
+  localize(locale: Locale) {
+    return this.pod.doc(this.podPath, locale);
+  }
+
   async render(context?: Record<string, any>): Promise<string> {
     const defaultContext: TemplateContext = {
       doc: this,

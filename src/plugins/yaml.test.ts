@@ -12,7 +12,7 @@ test('Inbuilt YAML types', (t: ExecutionContext) => {
   t.deepEqual(doc.fields.doc.simple, pod.doc('/content/pages/index.yaml'));
   t.deepEqual(
     doc.fields.doc.options,
-    pod.doc('/content/pages/index.yaml', pod.locale('de'))
+    pod.doc('/content/pages/index.yaml', pod.locale('en'))
   );
   t.deepEqual(
     doc.fields.docs.simple,
@@ -61,6 +61,10 @@ test('Inbuilt YAML types', (t: ExecutionContext) => {
     pod.locale('de')
   ) as Document;
   t.deepEqual(deDoc.fields.IfLocale, 'de Value');
+  t.deepEqual(
+    deDoc.fields.doc.options,
+    pod.doc('/content/pages/index.yaml', pod.locale('de'))
+  );
 
   const jaDoc = pod.doc(
     '/content/pages/index.yaml',
